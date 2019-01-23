@@ -8,13 +8,13 @@ Copyright   : (c) OSANAI Kazuyoshi, 2019
 License     : BSD 3-Clause
 Maintainer  : osmium.k@gmail.com
 Stability   : experimental
-Portability : GHC
+Portability : GHC, word size 64bit
 
 Simple implementation of xorshift+.
 
 >>> s <- genXorshiftPlusInt 1
 >>> getInt s
-131076
+-274877775873
 -}
 module Random.XorshiftPlus
   ( XorshiftPlus
@@ -25,17 +25,29 @@ module Random.XorshiftPlus
   ) where
 
 import Data.IORef
+-- import Data.Coerce
 import GHC.Types
 import GHC.Prim
+import Prelude hiding (not)
 
 data XorshiftPlus1 = XorshiftPlus1 Word# Word#
 
 -- | Random state
 newtype XorshiftPlus = XorshiftPlus (IORef XorshiftPlus1)
 
+not :: Word# -> Word#
+not = not#
+
+plus :: Word# -> Word# -> Word#
 plus = plusWord#
+
+xor :: Word# -> Word# -> Word#
 xor = xor#
+
+shiftL :: Word# -> Int# -> Word#
 shiftL = uncheckedShiftL#
+
+shiftR :: Word# -> Int# -> Word#
 shiftR = uncheckedShiftRL#
 
 -- | Generate a new random state by a Word seed.
@@ -43,7 +55,7 @@ genXorshiftPlusWord
   :: Word            -- ^ random seed
   -> IO XorshiftPlus
 genXorshiftPlusWord (W# w) = do
-  ref <- newIORef (XorshiftPlus1 w (w `plus` 1##))
+  ref <- newIORef (XorshiftPlus1 w (not w))
   return $ XorshiftPlus ref
 
 -- | Generate a new random state by an Int seed.
