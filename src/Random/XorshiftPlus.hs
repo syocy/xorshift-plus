@@ -22,6 +22,7 @@ module Random.XorshiftPlus
   , genXorshiftPlusInt
   , getWord
   , getInt
+  , getDouble
   ) where
 
 import Data.IORef
@@ -79,3 +80,10 @@ getInt :: XorshiftPlus -> IO Int
 getInt x = do
   w <- getWord x
   return $ fromIntegral w
+
+-- | Get a new random value as Double [0, 1.0].
+getDouble :: XorshiftPlus -> IO Double
+getDouble x = do
+  let maxWord = fromIntegral (maxBound :: Word)
+  w <- getWord x
+  return $ (fromIntegral w) / maxWord
