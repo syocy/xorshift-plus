@@ -5,6 +5,7 @@ module Random.XorshiftPlusSpec where
 import Test.Hspec
 import Random.XorshiftPlus
 import Data.List
+import Control.Monad
 
 calcChisq :: [Int] -> Double -> Double
 calcChisq count expected = foldl' f 0.0 $ count
@@ -30,10 +31,35 @@ execTestChisq = do
   let ret = testChisq n k randoms
   return $ ret < limit
 
+testCor :: Int -> Int -> [Double] -> Double
+testCor n k randoms = let s = testCor' n randoms 0.0 in
+                      let n' = fromIntegral n in
+                      sqrt n' * (12.0 * s / n' - 3.0) / sqrt 13.0
+  where
+    testCor' :: Int -> [Double] -> Double -> Double
+    testCor' 0 _       res = res
+    testCor' n randoms res =
+      let (buff, restRandoms) = splitAt k randoms in
+      let x =  head buff * head restRandoms in
+      testCor' (n-1) (tail randoms) (res+x)
+
+execTestCor :: IO Bool
+execTestCor = do
+  xorshift <- genXorshiftPlusInt 1
+  let n = 2500
+  randoms <- sequence $ replicate ((n+1) * 3) $ getDouble xorshift
+  cors <- forM [1, 2, 3] $ \k -> do
+    let x = testCor n k randoms
+    return x
+  return $ all (\x -> (-1.96 < x && x < 1.96)) cors
+
 spec :: Spec
 spec = do
   describe "chisq" $ do
     it "chisq" $ do
       ret <- execTestChisq
       ret `shouldBe` True
-
+  describe "cor" $ do
+    it "cor" $ do
+      ret <- execTestCor
+      ret `shouldBe` True
