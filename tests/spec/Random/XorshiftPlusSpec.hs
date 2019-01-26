@@ -3,9 +3,29 @@
 module Random.XorshiftPlusSpec where
 
 import Test.Hspec
+import Test.QuickCheck
+import qualified Test.QuickCheck.Monadic as QC
 import Random.XorshiftPlus
 import Data.List
 import Control.Monad
+import System.CPUTime
+
+run :: IO ()
+run = do
+  seed <- getCPUTime
+  xorshift <- genXorshiftPlusInt (fromInteger seed)
+  ws <- sequence $ replicate 10 $ getWord xorshift
+  print ws
+  is <- sequence $ replicate 10 $ getInt xorshift
+  print is
+  ds <- sequence $ replicate 10 $ getDouble xorshift
+  print ds
+
+rangeDouble :: Property
+rangeDouble = property $ \seed -> QC.monadicIO $ do
+  xorshift <- QC.run $ genXorshiftPlusInt seed
+  ret <- QC.run $ sequence $ replicate 100 $ getDouble xorshift
+  QC.assert $ all (\r -> 0.0 <= r && r <= 1.0) ret
 
 calcChisq :: [Int] -> Double -> Double
 calcChisq count expected = foldl' f 0.0 $ count
@@ -38,10 +58,10 @@ testCor n k randoms = let s = testCor' n randoms 0.0 in
   where
     testCor' :: Int -> [Double] -> Double -> Double
     testCor' 0 _       res = res
-    testCor' n randoms res =
-      let (buff, restRandoms) = splitAt k randoms in
+    testCor' n' randoms' res =
+      let (buff, restRandoms) = splitAt k randoms' in
       let x =  head buff * head restRandoms in
-      testCor' (n-1) (tail randoms) (res+x)
+      testCor' (n'-1) (tail randoms') (res+x)
 
 execTestCor :: IO Bool
 execTestCor = do
@@ -55,6 +75,12 @@ execTestCor = do
 
 spec :: Spec
 spec = do
+  describe "_run" $ do
+    it "_run" $ do
+      run
+  describe "range" $ do
+    it "getDouble" $ do
+      rangeDouble
   describe "chisq" $ do
     it "chisq" $ do
       ret <- execTestChisq

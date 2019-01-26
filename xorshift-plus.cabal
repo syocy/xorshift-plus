@@ -52,6 +52,7 @@ test-suite specs
   build-depends:       base
                      , xorshift-plus
                      , hspec >= 2
+                     , QuickCheck
   build-tool-depends:  hspec-discover:hspec-discover >= 2
   ghc-options:         -Wall -Wcompat
   default-language:    Haskell2010
