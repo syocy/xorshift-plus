@@ -26,7 +26,6 @@ source-repository head
               
 library
   exposed-modules:     Random.XorshiftPlus
-  other-modules:       Paths_xorshift_plus
   -- other-extensions:
   build-depends:       base ^>=4.12.0.0
                      , ghc-prim
@@ -48,7 +47,6 @@ test-suite specs
   main-is:             Spec.hs
   hs-source-dirs:      tests/spec
   other-modules:       Random.XorshiftPlusSpec
-                     , Paths_xorshift_plus
   build-depends:       base
                      , xorshift-plus
                      , hspec >= 2
