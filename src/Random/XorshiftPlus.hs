@@ -12,20 +12,27 @@ Portability : GHC, word size 64bit
 
 Simple implementation of xorshift+.
 
->>> s <- genXorshiftPlusInt 1
->>> getInt s
--274877775873
+>>> gen <- genXorshiftPlusInt 1
+>>> getInt gen
+2455688531189531812
 -}
 module Random.XorshiftPlus
-  ( XorshiftPlusST
-  , XorshiftPlus
-  , genXorshiftPlusWordST
+  (
+  -- * IO version
+    XorshiftPlus
+  -- ** Generator
   , genXorshiftPlusWord
   , genXorshiftPlusInt
-  , getWordST
+  -- ** Values
   , getWord
   , getInt
   , getDouble
+  -- * Low level, ST version
+  , XorshiftPlusST
+  , genXorshiftPlusWordST
+  , getWordST
+  -- * Internal
+  , splitMix64Next
   ) where
 
 -- import Data.IORef
@@ -36,17 +43,22 @@ import GHC.Types
 import GHC.Prim
 import Prelude hiding (not)
 
+-- $setup
+-- >>> :set -XMagicHash
+
 data XorshiftPlus1 = XorshiftPlus1 Word# Word#
+
+-- | Random state
 newtype XorshiftPlusST s = XorshiftPlusST (STRef s XorshiftPlus1)
 
 -- | Random state
 type XorshiftPlus = XorshiftPlusST RealWorld
 
-not :: Word# -> Word#
-not = not#
-
 plus :: Word# -> Word# -> Word#
 plus = plusWord#
+
+times :: Word# -> Word# -> Word#
+times = timesWord#
 
 xor :: Word# -> Word# -> Word#
 xor = xor#
@@ -57,9 +69,21 @@ shiftL = uncheckedShiftL#
 shiftR :: Word# -> Int# -> Word#
 shiftR = uncheckedShiftRL#
 
+-- | For first return value.
+--
+-- >>> W# (splitMix64Next 1##)
+-- 10451216379200822465
+splitMix64Next :: Word# -> Word#
+splitMix64Next x =
+  let z1 = x `plus` 0x9e3779b97f4a7c15## in
+  let z2 = (z1 `xor` (z1 `shiftR` 30#)) `times` 0xbf58476d1ce4e5b9## in
+  let z3 = (z2 `xor` (z2 `shiftR` 27#)) `times` 0x94d049bb133111eb## in
+  z3 `xor` (z3 `shiftR` 31#)
+
+-- | Generate a new random state by a Word seed.
 genXorshiftPlusWordST :: Word -> ST s (XorshiftPlusST s)
 genXorshiftPlusWordST (W# w) = do
-  ref <- newSTRef (XorshiftPlus1 w (not w))
+  ref <- newSTRef (XorshiftPlus1 w (splitMix64Next w))
   return $ XorshiftPlusST ref
 
 -- | Generate a new random state by a Word seed.
@@ -74,6 +98,7 @@ genXorshiftPlusInt
   -> IO XorshiftPlus
 genXorshiftPlusInt i = genXorshiftPlusWord (fromIntegral i)
 
+-- | Get a new random value as Word.
 getWordST :: XorshiftPlusST s -> ST s Word
 getWordST (XorshiftPlusST ref) = do
   XorshiftPlus1 w0 w1 <- readSTRef ref
